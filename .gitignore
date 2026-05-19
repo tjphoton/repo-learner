@@ -1,0 +1,33 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+dist/
+build/
+
+# uv
+.uv/
+
+# Environment
+.env
+.env.*
+
+# Test / coverage
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Editor
+.DS_Store
+.idea/
+.vscode/
+
+# Generated report output (not source templates)
+reports/
+
+# Cache dir (--cache-dir flag)
+.agent_cache/
+
+# gstack internal
+.gstack/
