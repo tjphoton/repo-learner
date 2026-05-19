@@ -2,17 +2,37 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import pathlib
 import sys
 import time
 
 import click
 from rich.console import Console
-from rich.spinner import Spinner
 from rich.live import Live
 from rich.text import Text
 
 console = Console(stderr=True)
+
+
+def _check_env() -> None:
+    """Fail fast with a helpful message if required env vars are missing."""
+    if not os.environ.get("ANTHROPIC_API_KEY"):
+        console.print(
+            "[bold red]Error:[/bold red] ANTHROPIC_API_KEY is not set.\n\n"
+            "  [dim]export ANTHROPIC_API_KEY='sk-ant-...'[/dim]\n\n"
+            "Get a key at [link=https://console.anthropic.com]console.anthropic.com[/link]",
+            highlight=False,
+        )
+        sys.exit(1)
+
+    if not os.environ.get("GITHUB_TOKEN"):
+        console.print(
+            "[yellow]Warning:[/yellow] GITHUB_TOKEN is not set. "
+            "GitHub rate limits will be 60 req/hr (unauthenticated) instead of 5 000.\n"
+            "  [dim]export GITHUB_TOKEN='ghp_...'[/dim]",
+            highlight=False,
+        )
 
 
 def _repo_slug(repo_url: str) -> str:
@@ -38,6 +58,8 @@ def cli(
     dry_run: bool,
 ) -> None:
     """Analyse a GitHub repository and produce an interactive HTML learning document."""
+
+    _check_env()
 
     if dry_run:
         _dry_run(repo_url)
