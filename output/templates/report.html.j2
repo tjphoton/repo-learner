@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>{{ analysis.project_name }} — Codebase Report</title>
+<script src="https://unpkg.com/mermaid@10/dist/mermaid.min.js"></script>
+<link rel="stylesheet" href="https://unpkg.com/prismjs@1.29.0/themes/prism-tomorrow.min.css"/>
+<script src="https://unpkg.com/prismjs@1.29.0/components/prism-core.min.js"></script>
+<script src="https://unpkg.com/prismjs@1.29.0/plugins/autoloader/prism-autoloader.min.js"></script>
+<style>
+:root{
+  --bg:#0d1117;--surface:#161b22;--surface2:#1f2937;--border:#30363d;
+  --accent:#58a6ff;--accent2:#f78166;--accent3:#3fb950;--accent4:#d2a8ff;--accent5:#ffa657;
+  --text:#e6edf3;--muted:#8b949e;--faint:#484f58;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;line-height:1.7;font-size:15px}
+
+/* ── HEADER ── */
+header{background:linear-gradient(135deg,#0d1117,#161b22,#0d1526);border-bottom:1px solid var(--border);padding:52px 40px 44px;text-align:center;position:relative;overflow:hidden}
+header::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at 50% 0%,rgba(88,166,255,.08) 0%,transparent 70%)}
+.repo-url{display:inline-block;background:rgba(88,166,255,.1);border:1px solid rgba(88,166,255,.25);color:var(--accent);font-size:11px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;padding:4px 14px;border-radius:20px;margin-bottom:18px;text-decoration:none}
+h1{font-size:clamp(22px,4vw,40px);font-weight:700;letter-spacing:-1px;background:linear-gradient(135deg,#e6edf3,#58a6ff,#d2a8ff);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-bottom:10px}
+.one-liner{color:var(--muted);font-size:15px;max-width:640px;margin:0 auto 22px}
+.tech-tags{display:flex;gap:7px;justify-content:center;flex-wrap:wrap}
+.tech-tag{padding:3px 11px;border-radius:5px;font-size:12px;font-weight:600;background:rgba(88,166,255,.1);border:1px solid rgba(88,166,255,.25);color:var(--accent)}
+.complexity-badge{display:inline-block;margin-left:8px;padding:2px 10px;border-radius:12px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px}
+.complexity-small{background:rgba(63,185,80,.15);border:1px solid rgba(63,185,80,.3);color:#3fb950}
+.complexity-medium{background:rgba(255,166,87,.15);border:1px solid rgba(255,166,87,.3);color:#ffa657}
+.complexity-large{background:rgba(247,129,102,.15);border:1px solid rgba(247,129,102,.3);color:#f78166}
+.complexity-very-large{background:rgba(210,168,255,.15);border:1px solid rgba(210,168,255,.3);color:#d2a8ff}
+
+/* ── NAV ── */
+nav{background:var(--surface);border-bottom:1px solid var(--border);padding:0 32px;display:flex;gap:0;overflow-x:auto;position:sticky;top:0;z-index:100}
+nav a{color:var(--muted);text-decoration:none;padding:13px 14px;font-size:13px;font-weight:500;border-bottom:2px solid transparent;white-space:nowrap;transition:color .2s,border-color .2s}
+nav a:hover{color:var(--text)}
+nav a.active{color:var(--accent);border-bottom-color:var(--accent)}
+
+/* ── LAYOUT ── */
+.container{max-width:1080px;margin:0 auto;padding:0 24px}
+section{padding:56px 0;border-bottom:1px solid var(--border)}
+.sec-header{display:flex;align-items:flex-start;gap:14px;margin-bottom:32px}
+.sec-num{background:linear-gradient(135deg,var(--accent),var(--accent4));color:#fff;width:32px;height:32px;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;flex-shrink:0;margin-top:3px}
+.sec-title{font-size:22px;font-weight:700;margin-bottom:4px}
+.sec-desc{color:var(--muted);font-size:13px}
+h3{font-size:16px;font-weight:600;margin:24px 0 10px}
+p{color:var(--muted);margin-bottom:12px}
+p strong{color:var(--text)}
+
+/* ── CARDS ── */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px 20px;margin-bottom:12px;transition:border-color .2s}
+.card:hover{border-color:rgba(88,166,255,.3)}
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media(max-width:680px){.grid-2{grid-template-columns:1fr}}
+
+/* ── MERMAID ── */
+.diagram-wrap{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:24px;margin:16px 0;overflow-x:auto;text-align:center}
+
+/* ── CODE ── */
+pre[class*="language-"]{background:#0d1117!important;border:1px solid var(--border);border-radius:8px;margin:12px 0;font-size:12.5px;overflow-x:auto}
+.code-hdr{display:flex;align-items:center;justify-content:space-between;background:var(--surface2);border:1px solid var(--border);border-bottom:none;border-radius:8px 8px 0 0;padding:6px 14px;font-size:11.5px;color:var(--muted);font-family:monospace}
+.code-hdr+pre{border-radius:0 0 8px 8px;margin-top:0}
+
+/* ── DIRECTORY TREE ── */
+.tree{font-family:monospace;font-size:13px;line-height:1.9;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:20px 24px}
+.tree-entry{color:var(--muted);display:flex;align-items:flex-start;gap:8px}
+.tree-entry.dir{color:var(--accent)}
+.tree-annotation{color:var(--faint);font-size:12px;margin-left:4px;font-style:italic}
+
+/* ── KEY FILES ── */
+.key-file{background:var(--surface);border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:10px}
+.key-file summary{display:flex;align-items:center;gap:12px;padding:14px 18px;cursor:pointer;list-style:none;transition:background .15s}
+.key-file summary:hover{background:rgba(255,255,255,.03)}
+.key-file summary::-webkit-details-marker{display:none}
+.kf-rank{width:26px;height:26px;border-radius:6px;background:linear-gradient(135deg,var(--accent),var(--accent4));color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0}
+.kf-path{font-family:monospace;font-size:13px;color:var(--accent3);flex:1}
+.kf-reason{font-size:12.5px;color:var(--muted)}
+.kf-body{border-top:1px solid var(--border);padding:16px 18px}
+.kf-annotation{color:var(--muted);font-size:13px;margin-bottom:10px}
+
+/* ── DATA FLOW ── */
+.flow-steps{list-style:none;padding:0;margin:16px 0}
+.flow-step{display:flex;gap:14px;margin-bottom:12px;align-items:flex-start}
+.flow-step-num{width:24px;height:24px;border-radius:50%;background:rgba(88,166,255,.15);border:1px solid rgba(88,166,255,.3);color:var(--accent);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;margin-top:2px}
+.flow-step-body{font-size:13.5px;color:var(--muted)}
+.flow-step-body strong{color:var(--text)}
+.flow-step-ref{font-family:monospace;font-size:12px;color:var(--faint)}
+
+/* ── INNOVATION ── */
+.innovation-table{border:1px solid var(--border);border-radius:10px;overflow:hidden;margin:16px 0}
+.innovation-table table{width:100%;border-collapse:collapse;font-size:13px}
+.innovation-table th{background:var(--surface2);padding:9px 14px;text-align:left;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);border-bottom:1px solid var(--border)}
+.innovation-table td{padding:10px 14px;border-bottom:1px solid var(--faint);vertical-align:top;color:var(--muted)}
+.innovation-table td:first-child{color:var(--text);font-weight:600;white-space:nowrap}
+.innovation-table td.highlight{color:var(--accent3)}
+.innovation-table tr:last-child td{border-bottom:none}
+
+/* ── REBUILD PHASES ── */
+.rebuild-timeline{position:relative;padding-left:28px}
+.rebuild-timeline::before{content:'';position:absolute;left:8px;top:0;bottom:0;width:2px;background:var(--border)}
+.rebuild-phase{position:relative;margin-bottom:22px;padding:16px 18px;background:var(--surface);border:1px solid var(--border);border-radius:10px}
+.rebuild-phase::before{content:attr(data-phase);position:absolute;left:-28px;top:14px;width:16px;height:16px;background:var(--accent);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:#fff;margin-left:-1px}
+.phase-title{font-size:14px;font-weight:600;margin-bottom:4px}
+.phase-desc{font-size:13px;color:var(--muted);margin-bottom:10px}
+.prompt-wrap{position:relative}
+.prompt-box{background:#0a1628;border:1px solid #1f3a6e;border-radius:8px;padding:14px 16px;font-family:monospace;font-size:12.5px;color:#cdd9e5;white-space:pre-wrap;line-height:1.8;overflow-x:auto}
+.copy-btn{position:absolute;top:8px;right:8px;background:rgba(88,166,255,.15);border:1px solid rgba(88,166,255,.3);color:var(--accent);border-radius:5px;padding:3px 10px;font-size:11px;font-weight:600;cursor:pointer;transition:background .15s}
+.copy-btn:hover{background:rgba(88,166,255,.25)}
+.gotchas{margin-top:10px;padding-left:18px}
+.gotchas li{font-size:12.5px;color:var(--muted);margin-bottom:3px}
+
+/* ── CALLOUT ── */
+.callout{border-radius:8px;padding:12px 16px;margin:14px 0;font-size:13px;display:flex;gap:10px;border-left:3px solid}
+.callout-info{background:rgba(88,166,255,.07);border-left-color:var(--accent);color:var(--muted)}
+.callout-info strong{color:var(--text)}
+
+footer{padding:32px;text-align:center;color:var(--faint);font-size:12px}
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-track{background:var(--bg)}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header>
+  <a class="repo-url" href="{{ analysis.repo_url }}" target="_blank" rel="noopener">{{ analysis.repo_url }}</a>
+  <h1>{{ analysis.project_name }}
+    <span class="complexity-badge complexity-{{ analysis.estimated_complexity.replace('-', '-') }}">{{ analysis.estimated_complexity }}</span>
+  </h1>
+  <p class="one-liner">{{ analysis.one_liner }}</p>
+  <div class="tech-tags">
+    {% for tech in analysis.tech_stack %}
+    <span class="tech-tag">{{ tech }}</span>
+    {% endfor %}
+  </div>
+</header>
+
+<!-- NAV -->
+<nav>
+  <a href="#overview">Overview</a>
+  <a href="#directory">Directory</a>
+  <a href="#key-files">Key Files</a>
+  <a href="#data-flow">Data Flow</a>
+  <a href="#innovation">Innovation</a>
+  <a href="#rebuild">Rebuild Guide</a>
+</nav>
+
+<!-- §1 OVERVIEW -->
+<section id="overview">
+<div class="container">
+  <div class="sec-header">
+    <div class="sec-num">1</div>
+    <div>
+      <div class="sec-title">Project Overview</div>
+      <div class="sec-desc">Purpose, tech stack, and architecture</div>
+    </div>
+  </div>
+
+  <p>{{ analysis.purpose }}</p>
+
+  <h3>Architecture</h3>
+  <div class="diagram-wrap">
+    <div class="mermaid">{{ analysis.architecture_mermaid }}</div>
+  </div>
+</div>
+</section>
+
+<!-- §2 DIRECTORY STRUCTURE -->
+<section id="directory">
+<div class="container">
+  <div class="sec-header">
+    <div class="sec-num">2</div>
+    <div>
+      <div class="sec-title">Directory Structure</div>
+      <div class="sec-desc">What each top-level folder does</div>
+    </div>
+  </div>
+
+  <div class="tree">
+    {% for entry in analysis.directory_structure %}
+    <div class="tree-entry {% if entry.type == 'dir' %}dir{% endif %}">
+      <span>{% if entry.type == 'dir' %}📁{% else %}📄{% endif %} {{ entry.path }}/</span>
+      <span class="tree-annotation">— {{ entry.annotation }}</span>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+</section>
+
+<!-- §3 KEY FILES -->
+<section id="key-files">
+<div class="container">
+  <div class="sec-header">
+    <div class="sec-num">3</div>
+    <div>
+      <div class="sec-title">Key Files</div>
+      <div class="sec-desc">The 10 most important files and why</div>
+    </div>
+  </div>
+
+  {% for kf in analysis.key_files | sort(attribute='rank') %}
+  <details class="key-file">
+    <summary>
+      <div class="kf-rank">{{ kf.rank }}</div>
+      <div class="kf-path">{{ kf.path }}</div>
+      <div class="kf-reason">{{ kf.reason }}</div>
+    </summary>
+    <div class="kf-body">
+      <p class="kf-annotation">{{ kf.reason }}</p>
+      {% set ext = kf.path.split('.')[-1] %}
+      <div class="code-hdr"><span>{{ kf.path }}</span></div>
+      <pre class="language-{{ ext }}"><code class="language-{{ ext }}">{{ kf.excerpt }}</code></pre>
+    </div>
+  </details>
+  {% endfor %}
+</div>
+</section>
+
+<!-- §4 DATA FLOW -->
+<section id="data-flow">
+<div class="container">
+  <div class="sec-header">
+    <div class="sec-num">4</div>
+    <div>
+      <div class="sec-title">Data Flow</div>
+      <div class="sec-desc">How a request or event travels through the system</div>
+    </div>
+  </div>
+
+  <div class="diagram-wrap">
+    <div class="mermaid">{{ analysis.data_flow_mermaid }}</div>
+  </div>
+
+  {% if analysis.data_flow_steps %}
+  <h3>Step-by-Step</h3>
+  <ul class="flow-steps">
+    {% for step in analysis.data_flow_steps %}
+    <li class="flow-step">
+      <div class="flow-step-num">{{ loop.index }}</div>
+      <div class="flow-step-body">
+        <strong>{{ step.source }}</strong> → <strong>{{ step.target }}</strong>
+        &nbsp;·&nbsp; {{ step.label }}
+        <div class="flow-step-ref">{{ step.file_ref }}</div>
+      </div>
+    </li>
+    {% endfor %}
+  </ul>
+  {% endif %}
+</div>
+</section>
+
+<!-- §5 INNOVATION -->
+<section id="innovation">
+<div class="container">
+  <div class="sec-header">
+    <div class="sec-num">5</div>
+    <div>
+      <div class="sec-title">Innovation</div>
+      <div class="sec-desc">What's unique compared to existing tools</div>
+    </div>
+  </div>
+
+  <div class="innovation-table">
+    <table>
+      <tr>
+        <th>Feature</th>
+        <th>Conventional Approach</th>
+        <th>This Project</th>
+        <th>Why It Matters</th>
+      </tr>
+      {% for pt in analysis.innovation_points %}
+      <tr>
+        <td>{{ pt.title }}</td>
+        <td>{{ pt.conventional }}</td>
+        <td class="highlight">{{ pt.this_project }}</td>
+        <td>{{ pt.why_matters }}</td>
+      </tr>
+      {% endfor %}
+    </table>
+  </div>
+</div>
+</section>
+
+<!-- §6 REBUILD GUIDE -->
+<section id="rebuild">
+<div class="container">
+  <div class="sec-header">
+    <div class="sec-num">6</div>
+    <div>
+      <div class="sec-title">Rebuild Guide</div>
+      <div class="sec-desc">Build this project from scratch — ideas, steps, and copy-able prompts</div>
+    </div>
+  </div>
+
+  <div class="callout callout-info">
+    <span>💡</span>
+    <span>Each phase below includes a Claude Code prompt you can paste directly to generate that phase of the project.</span>
+  </div>
+
+  <div class="rebuild-timeline">
+    {% for phase in analysis.rebuild_phases %}
+    <div class="rebuild-phase" data-phase="{{ phase.phase }}">
+      <div class="phase-title">Phase {{ phase.phase }} — {{ phase.title }}</div>
+      <p class="phase-desc">{{ phase.description }}</p>
+      <div class="prompt-wrap">
+        <div class="prompt-box" id="prompt-{{ phase.phase }}">{{ phase.prompt }}</div>
+        <button class="copy-btn" onclick="copyPrompt({{ phase.phase }})">Copy</button>
+      </div>
+      {% if phase.gotchas %}
+      <ul class="gotchas">
+        {% for g in phase.gotchas %}
+        <li>⚠️ {{ g }}</li>
+        {% endfor %}
+      </ul>
+      {% endif %}
+    </div>
+    {% endfor %}
+  </div>
+</div>
+</section>
+
+<footer>
+  Generated by Codebase Learning Agent · claude-sonnet-4-6 · {{ analysis.repo_url }}
+</footer>
+
+<script>
+mermaid.initialize({
+  startOnLoad: true,
+  theme: 'dark',
+  themeVariables: {
+    primaryColor:'#1f2937',primaryTextColor:'#e6edf3',primaryBorderColor:'#30363d',
+    lineColor:'#58a6ff',secondaryColor:'#161b22',tertiaryColor:'#0d1117',
+    background:'#0d1117',mainBkg:'#161b22',nodeBorder:'#30363d',
+    clusterBkg:'#0d1526',titleColor:'#e6edf3',edgeLabelBackground:'#161b22',
+    activationBkgColor:'#1f3a6e',activationBorderColor:'#58a6ff',
+    actorBkg:'#161b22',actorBorder:'#30363d',actorTextColor:'#e6edf3',
+    actorLineColor:'#58a6ff',signalColor:'#58a6ff',signalTextColor:'#e6edf3',
+    labelBoxBkgColor:'#161b22',labelBoxBorderColor:'#30363d',labelTextColor:'#e6edf3',
+    loopTextColor:'#8b949e',noteBorderColor:'#30363d',noteBkgColor:'#1f2937',
+    noteTextColor:'#e6edf3',
+  },
+  flowchart:{curve:'basis',htmlLabels:true},
+});
+
+function copyPrompt(phase) {
+  const el = document.getElementById('prompt-' + phase);
+  navigator.clipboard.writeText(el.textContent).then(() => {
+    const btn = el.nextElementSibling;
+    const orig = btn.textContent;
+    btn.textContent = 'Copied!';
+    setTimeout(() => { btn.textContent = orig; }, 1500);
+  });
+}
+
+// Active nav on scroll
+const sections = document.querySelectorAll('section[id]');
+const navLinks  = document.querySelectorAll('nav a');
+window.addEventListener('scroll', () => {
+  let cur = '';
+  sections.forEach(s => { if (window.scrollY >= s.offsetTop - 80) cur = s.id; });
+  navLinks.forEach(a => a.classList.toggle('active', a.getAttribute('href') === '#' + cur));
+}, {passive: true});
+</script>
+</body>
+</html>
