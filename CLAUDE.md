@@ -1,6 +1,12 @@
 # Codebase Learning Agent
 
-A CLI tool that takes a remote GitHub repo URL and produces a self-contained interactive HTML learning document using Claude's extended thinking and tool use.
+A CLI tool that takes a remote GitHub repo URL and produces a self-contained interactive HTML learning document using Claude's extended thinking.
+
+## Architecture
+
+Two-phase, no agentic loop:
+1. **Fetch** (`agent/fetcher.py`) — PyGithub collects metadata, file tree, key file contents, and commits. No model involved.
+2. **Analyze** (`agent/analyzer.py`) — One API call to Haiku with all fetched content. Returns `AnalysisOutput` JSON.
 
 ## Model
 
@@ -12,9 +18,8 @@ A CLI tool that takes a remote GitHub repo URL and produces a self-contained int
 repo-learner/
 ├── main.py                    # Click CLI entry point
 ├── agent/
-│   ├── loop.py                # Agentic loop (30-round max)
-│   ├── tools.py               # 6 tool schemas + dispatch()
-│   ├── github_client.py       # PyGithub wrapper, LRU-cached
+│   ├── fetcher.py             # GitHub pre-fetch (no model)
+│   ├── analyzer.py            # Single Haiku API call → AnalysisOutput
 │   └── models.py              # Pydantic AnalysisOutput + sub-models
 ├── output/
 │   ├── renderer.py            # AnalysisOutput → self-contained HTML
@@ -24,18 +29,17 @@ repo-learner/
 │   └── system.md              # Cached system prompt (injected at runtime)
 └── tests/
     ├── conftest.py
-    ├── unit/                  # 50+ tests, fully mocked, <5s
-    ├── integration/           # 15 tests, VCR cassettes, no live network
-    │   └── cassettes/
-    └── e2e/                   # 3 tests, real APIs, @pytest.mark.slow
+    ├── unit/                  # 100 tests, fully mocked, <5s
+    ├── integration/           # pipeline tests, no live network
+    └── e2e/                   # real APIs, @pytest.mark.slow
 ```
 
 ## Commands
 
 ```bash
 uv run repo-learn <REPO_URL>                  # analyse a repo
-uv run repo-learn <REPO_URL> --dry-run        # print first 3 tool calls, exit
-uv run repo-learn <REPO_URL> --verbose        # show tool calls + thinking tokens
+uv run repo-learn <REPO_URL> --dry-run        # show fetch plan, exit
+uv run repo-learn <REPO_URL> --verbose        # show context size + thinking tokens
 uv run repo-learn <REPO_URL> --thinking-budget 12000  # override budget
 
 uv run pytest tests/unit tests/integration    # fast tests (no live API)
@@ -47,29 +51,28 @@ uv run mypy agent/ output/                   # type check
 
 ## Key Invariants
 
-- **Thinking blocks must be forwarded verbatim** in every subsequent assistant turn. Stripping them causes a 400 API error.
+- **Single API call**: `analyzer.py` makes exactly one `messages.create` call per run. No loop.
 - **Prompt caching** is applied to the system prompt via `cache_control: {type: ephemeral}`. Always keep this.
-- **Tool dispatch returns an envelope**: `{"ok": bool, "data": ...}` or `{"ok": false, "error": "..."}`. Never raise from dispatch; always catch and wrap.
 - **HTML output is self-contained**: no `cdn.jsdelivr.net` or any external URL in the rendered file. Mermaid and Prism are inlined.
 - **`AnalysisOutput.key_files` must be exactly 10 entries**, ranked 1–10 with unique ranks.
-- **CI never calls real APIs**: `--vcr-record=none` is set in CI. Cassettes live in `tests/integration/cassettes/`.
+- **CI never calls real APIs**: all unit and integration tests mock the Anthropic and GitHub clients.
+- **Fetcher is deterministic**: `fetcher.py` always selects files by the same priority order. The model never decides what to read.
 
 ## Environment Variables
 
 | Variable | Required | Purpose |
 |---|---|---|
-| `ANTHROPIC_API_KEY` | Yes (agent + E2E) | Claude API |
+| `ANTHROPIC_API_KEY` | Yes | Claude API |
 | `GITHUB_TOKEN` | Recommended | Avoids GitHub rate limits (5000/hr vs 60/hr) |
 
 ## Testing Rules
 
 - Unit tests: mock everything at the boundary (`unittest.mock`). No real HTTP.
-- Integration tests: use `@pytest.mark.vcr` cassettes recorded once, replayed forever.
+- Integration tests: mock both GitHub and Anthropic clients end-to-end.
 - E2E tests: marked `@pytest.mark.slow`, skipped if `ANTHROPIC_API_KEY` not set.
 - Coverage floor: **85%** on `agent/` and `output/`. `models.py` must be 100%.
-- Never use `--vcr-record=all` in CI. Only use `new_episodes` locally when adding new cassettes.
 
-## Cost Model (claude-sonnet-4-6)
+## Cost Model (claude-haiku-4-5)
 
 | Token type | Rate |
 |---|---|
@@ -79,7 +82,7 @@ uv run mypy agent/ output/                   # type check
 | Thinking | $0.80 / M |
 | Output | $4.00 / M |
 
-Typical run: ~$0.03 (claude-haiku-4-5).
+Typical run: ~$0.03. One API call, ~10k input tokens.
 
 ## Commit Convention
 

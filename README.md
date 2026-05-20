@@ -2,7 +2,7 @@
 
 Turn any GitHub repository into an interactive HTML learning document in one command.
 
-Powered by **claude-haiku-4-5** with extended thinking and agentic tool use. The agent explores the repo autonomously (up to 15 rounds of tool calls), then produces a self-contained HTML report covering six sections: project overview, directory structure, key files, data flow, innovation analysis, and a vibe-coding rebuild guide with copy-able Claude Code prompts.
+Powered by **claude-haiku-4-5** with extended thinking. The tool pre-fetches the repo content (file tree, key files, commits) without any model involvement, then makes a **single API call** to produce a self-contained HTML report covering six sections: project overview, directory structure, key files, data flow, innovation analysis, and a vibe-coding rebuild guide with copy-able Claude Code prompts.
 
 ---
 
@@ -21,7 +21,7 @@ uv sync
 
 # 3. Run
 uv run repo-learn https://github.com/owner/repo
-# → writes summarize_report.html
+# → writes <project>_report.html
 ```
 
 Open the HTML file in any browser — no server needed.
@@ -35,6 +35,8 @@ Open the HTML file in any browser — no server needed.
 | `ANTHROPIC_API_KEY` | **Yes** | Get one at [console.anthropic.com](https://console.anthropic.com) |
 | `GITHUB_TOKEN` | Recommended | 5 000 req/hr vs 60 req/hr unauthenticated. Create at GitHub → Settings → Developer settings → Personal access tokens |
 
+You can also put these in a `.env` file (see `.env.example`).
+
 ---
 
 ## CLI reference
@@ -47,9 +49,9 @@ uv run repo-learn [OPTIONS] REPO_URL
 |---|---|---|
 | `--output`, `-o` | `<name>_report.html` | Output HTML path |
 | `--thinking-budget` | `8000` | Extended thinking token budget (higher = deeper analysis, more cost) |
-| `--cache-dir` | `.agent_cache` | Directory to cache analysis JSON. Re-run with the same URL to skip the agent and re-render only. |
-| `--verbose`, `-v` | off | Print each tool call and thinking token count to stderr |
-| `--dry-run` | off | Print the first 3 tool calls the agent would make, then exit (free) |
+| `--cache-dir` | `.agent_cache` | Directory to cache analysis JSON. Re-run with the same URL to skip the fetch+analysis and re-render only. |
+| `--verbose`, `-v` | off | Print context size and thinking token count to stderr |
+| `--dry-run` | off | Print the fetch plan (no API calls, free) |
 
 ### Examples
 
@@ -63,14 +65,14 @@ uv run repo-learn https://github.com/fastapi/fastapi -o reports/fastapi.html
 # Deeper analysis (costs a little more)
 uv run repo-learn https://github.com/fastapi/fastapi --thinking-budget 15000
 
-# See what the agent is doing
+# See what the analyzer receives
 uv run repo-learn https://github.com/fastapi/fastapi --verbose
 
 # Re-render from cache without calling the API again
 uv run repo-learn https://github.com/fastapi/fastapi
 # (second run hits cache automatically)
 
-# Preview tool calls without spending any tokens
+# Preview fetch plan without spending any tokens
 uv run repo-learn https://github.com/fastapi/fastapi --dry-run
 ```
 
@@ -82,14 +84,18 @@ uv run repo-learn https://github.com/fastapi/fastapi --dry-run
 REPO_URL
   │
   ▼
-Agent loop (claude-haiku-4-5, extended thinking)
-  │  up to 15 rounds of tool calls:
-  │  • repo_metadata      — description, language, stars, root layout
-  │  • find_entrypoints   — main.py, index.ts, Dockerfile, etc.
-  │  • list_directory     — recursive tree up to depth 4
-  │  • read_file          — file contents (auto-truncated at 1500 lines)
-  │  • search_code        — regex search across the repo
-  │  • get_commits        — recent commit history + churn signals
+Phase 1 — Fetch (PyGithub, no model)
+  │  • repo metadata      — description, language, stars
+  │  • full file tree     — one recursive git tree API call
+  │  • key file contents  — up to 15 files (README, entry points, config, source)
+  │  • recent commits     — last 15 commit messages
+  │
+  ▼
+Assembled context (~10k tokens)
+  │
+  ▼
+Phase 2 — Analyse (claude-haiku-4-5, single API call)
+  │  extended thinking → reasons across all provided content
   │
   ▼
 AnalysisOutput JSON (cached to .agent_cache/)
@@ -101,7 +107,20 @@ Jinja2 renderer
 self-contained HTML report
 ```
 
-The agent uses **prompt caching** on the system prompt (saves ~70% of per-round input token cost) and **extended thinking** to reason across multiple file reads before drawing conclusions — catching things a single-prompt approach misses.
+The system prompt uses **prompt caching** (`cache_control: ephemeral`) to avoid re-charging input tokens on re-renders. **Extended thinking** lets the model reason across multiple file relationships before drawing conclusions.
+
+---
+
+## File selection heuristic
+
+The fetcher always reads files in this priority order (up to 15 total):
+
+1. README (any format)
+2. Top-level entry points (`main.py`, `index.ts`, `Dockerfile`, …)
+3. Top-level config / manifests (`pyproject.toml`, `package.json`, `go.mod`, …)
+4. One CI workflow file (`.github/workflows/`)
+5. Other top-level source files
+6. Files one level deep in `src/`, `lib/`, `core/`, `app/`, etc.
 
 ---
 
@@ -124,14 +143,14 @@ Typical run on a medium-size repo (~200 files):
 
 | Token type | Rate | Typical usage | Cost |
 |---|---|---|---|
-| Input (non-cached) | $0.80 / M | ~8k | $0.006 |
+| Input (non-cached) | $0.80 / M | ~10k | $0.008 |
 | Cache write | $1.00 / M | ~2k | $0.002 |
-| Cache read | $0.08 / M | ~40k | $0.003 |
+| Cache read | $0.08 / M | ~2k | $0.000 |
 | Thinking | $0.80 / M | ~8k | $0.006 |
 | Output | $4.00 / M | ~3k | $0.012 |
 | **Total** | | | **~$0.03** |
 
-Haiku 4.5 is ~4× faster and ~10× cheaper than Sonnet for this workload.
+Haiku 4.5 + single API call = ~10× cheaper than the old Sonnet agentic loop.
 
 ---
 
@@ -144,9 +163,9 @@ uv sync --extra test --extra dev
 uv run pytest tests/unit tests/integration -q
 
 # With coverage (gate at 85%)
-uv run pytest tests/unit tests/integration --cov=agent --cov=output --cov-fail-under=85
+uv run pytest tests/unit tests/integration --cov --cov-fail-under=85
 
-# E2E tests (requires API keys, ~$0.30 total)
+# E2E tests (requires API keys, ~$0.05 total)
 uv run pytest -m slow tests/e2e/ -v
 
 # Lint + type check
@@ -158,17 +177,10 @@ uv run mypy agent/ output/ main.py --ignore-missing-imports
 
 ```
 tests/
-├── unit/           # 50+ tests, fully mocked, <5s total
-├── integration/    # 15 tests, mocked Claude API, no live network
-└── e2e/            # 3 tests, real APIs, @pytest.mark.slow
+├── unit/           # 100 tests, fully mocked, <5s total
+├── integration/    # pipeline tests, mocked GitHub + Anthropic
+└── e2e/            # real APIs, @pytest.mark.slow
 ```
-
-Key invariants verified by the integration tests:
-- Model string is always `claude-sonnet-4-6`
-- Thinking blocks are forwarded verbatim in every subsequent turn
-- System prompt has `cache_control: ephemeral`
-- Parallel tool calls are all dispatched
-- RuntimeError raised after exactly 30 rounds without convergence
 
 ---
 
@@ -178,17 +190,15 @@ Key invariants verified by the integration tests:
 repo-learner/
 ├── main.py                    # Click CLI
 ├── agent/
-│   ├── loop.py                # Agentic loop
-│   ├── tools.py               # Tool schemas + dispatch
-│   ├── github_client.py       # GitHub API wrapper
+│   ├── fetcher.py             # GitHub pre-fetch (no model)
+│   ├── analyzer.py            # Single API call → AnalysisOutput
 │   └── models.py              # Pydantic output schema
 ├── output/
 │   ├── renderer.py            # JSON → HTML
 │   └── templates/
 │       └── report.html.j2     # Jinja2 template
-├── prompts/
-│   └── system.md              # System prompt (injected with schema at runtime)
-└── tests/
+└── prompts/
+    └── system.md              # System prompt (injected with schema at runtime)
 ```
 
 ---

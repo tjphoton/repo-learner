@@ -52,8 +52,8 @@ def _repo_slug(repo_url: str) -> str:
 @click.option("--output", "-o", default=None, help="Output HTML path (default: <project_name>_report.html)")
 @click.option("--thinking-budget", default=8000, show_default=True, help="Extended thinking token budget")
 @click.option("--cache-dir", default=".agent_cache", show_default=True, help="Directory to cache analysis JSON")
-@click.option("--verbose", "-v", is_flag=True, help="Print tool calls and thinking token counts")
-@click.option("--dry-run", is_flag=True, help="Print first 3 tool calls the agent would make, then exit")
+@click.option("--verbose", "-v", is_flag=True, help="Print fetcher stats and thinking token counts")
+@click.option("--dry-run", is_flag=True, help="Show what would be fetched, then exit")
 def cli(
     repo_url: str,
     output: str | None,
@@ -80,56 +80,55 @@ def cli(
             from agent.models import AnalysisOutput
             raw = json.loads(cache_path.read_text())
             analysis = AnalysisOutput.model_validate(raw)
-            console.print("[green]✓ Cache hit — skipping agent run[/green]")
+            console.print("[green]✓ Cache hit — skipping fetch and analysis[/green]")
         except Exception as exc:
-            console.print(f"[yellow]Cache invalid ({exc}), re-running agent[/yellow]")
+            console.print(f"[yellow]Cache invalid ({exc}), re-running[/yellow]")
             analysis = None
 
-    # ── Run agent ─────────────────────────────────────────────────────────────
+    # ── Fetch + Analyse ───────────────────────────────────────────────────────
     if analysis is None:
         console.print(f"[bold]Analysing[/bold] [cyan]{repo_url}[/cyan]")
         console.print(f"[dim]Model: claude-haiku-4-5 · thinking budget: {thinking_budget:,} tokens[/dim]")
 
-        round_info = {"current": 0, "status": "starting"}
-
-        def progress_callback(round_num: int, stop_reason: str) -> None:
-            round_info["current"] = round_num
-            round_info["status"] = stop_reason
-
         start = time.monotonic()
 
+        # Phase 1: fetch repo content (no model)
         with Live(console=console, refresh_per_second=4) as live:
-            def render_spinner() -> Text:
-                t = Text()
-                t.append("⟳ ", style="cyan")
-                t.append(f"Exploring… (round {round_info['current']}/15)", style="white")
-                return t
+            live.update(Text.from_markup("⟳ [cyan]Fetching repository content…[/cyan]"))
+            from agent.fetcher import fetch_repo
+            ctx = fetch_repo(repo_url)
 
-            from agent.loop import run_agent
+        n_files = len(ctx.key_files)
+        n_tree = len(ctx.file_tree)
+        console.print(
+            f"[dim]Fetched {n_files} key files · {n_tree} tree entries · "
+            f"{len(ctx.recent_commits)} commits[/dim]"
+        )
+
+        # Phase 2: single model call
+        with Live(console=console, refresh_per_second=4) as live:
+            live.update(Text.from_markup("⟳ [cyan]Analysing with claude-haiku-4-5…[/cyan]"))
 
             import threading
+            from agent.analyzer import analyze
 
             result_box: dict = {}
             error_box: dict = {}
 
             def run() -> None:
                 try:
-                    result_box["value"] = run_agent(
-                        repo_url,
+                    result_box["value"] = analyze(
+                        ctx,
                         thinking_budget=thinking_budget,
                         verbose=verbose,
-                        progress_callback=progress_callback,
                     )
                 except Exception as exc:
                     error_box["value"] = exc
 
             thread = threading.Thread(target=run, daemon=True)
             thread.start()
-
             while thread.is_alive():
-                live.update(render_spinner())
                 thread.join(timeout=0.25)
-
             live.update(Text(""))
 
         if "value" in error_box:
@@ -143,7 +142,6 @@ def cli(
         cache_path.parent.mkdir(parents=True, exist_ok=True)
         cache_path.write_text(analysis.model_dump_json(indent=2))
         console.print(f"[dim]Analysis cached to {cache_path}[/dim]")
-
         console.print(f"[green]✓ Analysis complete in {elapsed:.1f}s[/green]")
 
     # ── Render HTML ───────────────────────────────────────────────────────────
@@ -153,27 +151,26 @@ def cli(
     render_html(analysis, output_path=out_path)
 
     console.print(f"[bold green]✓ Report written to {out_path}[/bold green]")
-    _print_cost_estimate(analysis)
+    _print_cost_estimate()
 
 
 def _dry_run(repo_url: str) -> None:
-    """Print the first 3 tool calls the agent would make, then exit."""
-    console.print("[bold yellow]Dry-run mode — first 3 tool calls:[/bold yellow]")
-    calls = [
-        ("repo_metadata", {"repo_url": repo_url}),
-        ("find_entrypoints", {}),
-        ("list_directory", {"path": "", "depth": 3}),
-    ]
-    for i, (name, inputs) in enumerate(calls, 1):
-        console.print(f"  {i}. [cyan]{name}[/cyan]({json.dumps(inputs)})")
+    """Show what the fetcher would collect, then exit."""
+    console.print("[bold yellow]Dry-run mode — fetcher plan:[/bold yellow]")
+    slug = repo_url.rstrip("/").replace("https://github.com/", "")
+    console.print(f"  Repo slug : [cyan]{slug}[/cyan]")
+    console.print(f"  1. GET /repos/{slug}  — metadata")
+    console.print(f"  2. GET /repos/{slug}/git/trees/HEAD?recursive=1  — full file tree")
+    console.print(f"  3. GET /repos/{slug}/contents/<path>  — up to 15 key files")
+    console.print(f"  4. GET /repos/{slug}/commits  — 15 recent commits")
+    console.print("  5. Single claude-haiku-4-5 call → JSON output")
     console.print("[dim]Use without --dry-run to run the full analysis.[/dim]")
 
 
-def _print_cost_estimate(analysis: object) -> None:
-    """Print a rough cost estimate based on typical token counts."""
-    # Typical for a medium repo: 8k input non-cached, 40k cache reads, 8k thinking, 3k output
-    # Haiku 4.5 rates: input $0.80/M, cache read $0.08/M, thinking $0.80/M, output $4.00/M
-    est = (8_000 * 0.80 + 40_000 * 0.08 + 8_000 * 0.80 + 3_000 * 4.00) / 1_000_000
+def _print_cost_estimate() -> None:
+    """Print a rough cost estimate based on Haiku 4.5 pricing."""
+    # ~10k input non-cached, ~2k cache write, ~8k thinking, ~3k output
+    est = (10_000 * 0.80 + 2_000 * 1.00 + 8_000 * 0.80 + 3_000 * 4.00) / 1_000_000
     console.print(f"[dim]Estimated cost: ~${est:.3f} (claude-haiku-4-5)[/dim]")
 
 
