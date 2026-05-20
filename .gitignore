@@ -27,6 +27,8 @@ htmlcov/
 
 # Generated report output (not source templates)
 reports/
+*_report.html
+*-plan.html
 
 # Cache dir (--cache-dir flag)
 .agent_cache/
