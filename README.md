@@ -2,7 +2,7 @@
 
 Turn any GitHub repository into an interactive HTML learning document in one command.
 
-Powered by **claude-sonnet-4-6** with extended thinking and agentic tool use. The agent explores the repo autonomously (up to 30 rounds of tool calls), then produces a self-contained HTML report covering six sections: project overview, directory structure, key files, data flow, innovation analysis, and a vibe-coding rebuild guide with copy-able Claude Code prompts.
+Powered by **claude-haiku-4-5** with extended thinking and agentic tool use. The agent explores the repo autonomously (up to 15 rounds of tool calls), then produces a self-contained HTML report covering six sections: project overview, directory structure, key files, data flow, innovation analysis, and a vibe-coding rebuild guide with copy-able Claude Code prompts.
 
 ---
 
@@ -15,12 +15,12 @@ export GITHUB_TOKEN="ghp_..."          # recommended — avoids 60 req/hr rate l
 
 # 2. Install
 pip install uv                         # if you don't have it
-git clone https://github.com/your-org/repo-learner
+git clone https://github.com/tjphoton/repo-learner
 cd repo-learner
 uv sync
 
 # 3. Run
-uv run repo-learn https://github.com/steipete/summarize
+uv run repo-learn https://github.com/owner/repo
 # → writes summarize_report.html
 ```
 
@@ -82,8 +82,8 @@ uv run repo-learn https://github.com/fastapi/fastapi --dry-run
 REPO_URL
   │
   ▼
-Agent loop (claude-sonnet-4-6, extended thinking)
-  │  up to 30 rounds of tool calls:
+Agent loop (claude-haiku-4-5, extended thinking)
+  │  up to 15 rounds of tool calls:
   │  • repo_metadata      — description, language, stars, root layout
   │  • find_entrypoints   — main.py, index.ts, Dockerfile, etc.
   │  • list_directory     — recursive tree up to depth 4
@@ -124,14 +124,14 @@ Typical run on a medium-size repo (~200 files):
 
 | Token type | Rate | Typical usage | Cost |
 |---|---|---|---|
-| Input (non-cached) | $3.00 / M | ~8k | $0.024 |
-| Cache write | $3.75 / M | ~2k | $0.008 |
-| Cache read | $0.30 / M | ~40k | $0.012 |
-| Thinking | $3.00 / M | ~8k | $0.024 |
-| Output | $15.00 / M | ~3k | $0.045 |
-| **Total** | | | **~$0.11** |
+| Input (non-cached) | $0.80 / M | ~8k | $0.006 |
+| Cache write | $1.00 / M | ~2k | $0.002 |
+| Cache read | $0.08 / M | ~40k | $0.003 |
+| Thinking | $0.80 / M | ~8k | $0.006 |
+| Output | $4.00 / M | ~3k | $0.012 |
+| **Total** | | | **~$0.03** |
 
-Large repos (500+ files) automatically use a two-phase strategy: a cheap Haiku pass maps the structure, then Sonnet does the deep analysis.
+Haiku 4.5 is ~4× faster and ~10× cheaper than Sonnet for this workload.
 
 ---
 

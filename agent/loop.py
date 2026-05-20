@@ -12,8 +12,8 @@ from agent.models import AnalysisOutput, output_schema_json, validate_output
 from agent.tools import TOOLS, dispatch_tool
 
 _SYSTEM_TEMPLATE = pathlib.Path(__file__).parent.parent / "prompts" / "system.md"
-_MODEL = "claude-sonnet-4-6"
-_MAX_ROUNDS = 30
+_MODEL = "claude-haiku-4-5-20251001"
+_MAX_ROUNDS = 15
 
 
 def _build_system_prompt() -> str:

@@ -57,7 +57,7 @@ def _tool_use_response(tool_name: str, tool_id: str, inputs: dict) -> MagicMock:
 # ── Tests ─────────────────────────────────────────────────────────────────────
 
 class TestAgenticLoopModel:
-    def test_uses_sonnet_46(self, minimal_raw):
+    def test_uses_haiku_45(self, minimal_raw):
         with patch("agent.loop.anthropic.Anthropic") as MockAnthopic, \
              patch("agent.loop.RepoClient"):
             mock_client = MockAnthopic.return_value
@@ -65,7 +65,7 @@ class TestAgenticLoopModel:
             from agent.loop import run_agent
             run_agent("https://github.com/owner/repo")
         kwargs = mock_client.messages.create.call_args.kwargs
-        assert kwargs["model"] == "claude-sonnet-4-6"
+        assert kwargs["model"] == "claude-haiku-4-5-20251001"
 
     def test_thinking_enabled_by_default(self, minimal_raw):
         with patch("agent.loop.anthropic.Anthropic") as MockAnthropic, \
@@ -141,7 +141,7 @@ class TestRoundCounting:
         assert result.project_name == "test-repo"
         assert mock_client.messages.create.call_count == 1
 
-    def test_raises_after_30_rounds(self):
+    def test_raises_after_15_rounds(self):
         with patch("agent.loop.anthropic.Anthropic") as MockAnthropic, \
              patch("agent.loop.RepoClient") as MockRC:
             MockRC.return_value.find_entrypoints.return_value = {}
@@ -150,9 +150,9 @@ class TestRoundCounting:
                 "find_entrypoints", "t_loop", {}
             )
             from agent.loop import run_agent
-            with pytest.raises(RuntimeError, match="30 rounds"):
+            with pytest.raises(RuntimeError, match="15 rounds"):
                 run_agent("https://github.com/owner/repo")
-        assert mock_client.messages.create.call_count == 30
+        assert mock_client.messages.create.call_count == 15
 
 
 class TestToolDispatch:

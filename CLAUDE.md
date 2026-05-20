@@ -4,7 +4,7 @@ A CLI tool that takes a remote GitHub repo URL and produces a self-contained int
 
 ## Model
 
-`claude-sonnet-4-6` with extended thinking (`budget_tokens: 8000`). Do not switch to Opus or Haiku without explicit instruction.
+`claude-haiku-4-5-20251001` with extended thinking (`budget_tokens: 8000`). Do not switch models without explicit instruction.
 
 ## Project Layout
 
@@ -73,13 +73,13 @@ uv run mypy agent/ output/                   # type check
 
 | Token type | Rate |
 |---|---|
-| Input | $3.00 / M |
-| Cache write | $3.75 / M |
-| Cache read | $0.30 / M |
-| Thinking | $3.00 / M |
-| Output | $15.00 / M |
+| Input | $0.80 / M |
+| Cache write | $1.00 / M |
+| Cache read | $0.08 / M |
+| Thinking | $0.80 / M |
+| Output | $4.00 / M |
 
-Typical run: ~$0.11. Two-phase mode (Haiku map + Sonnet analysis) for repos >500 files.
+Typical run: ~$0.03 (claude-haiku-4-5).
 
 ## Commit Convention
 

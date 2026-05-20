@@ -88,7 +88,7 @@ def cli(
     # ── Run agent ─────────────────────────────────────────────────────────────
     if analysis is None:
         console.print(f"[bold]Analysing[/bold] [cyan]{repo_url}[/cyan]")
-        console.print(f"[dim]Model: claude-sonnet-4-6 · thinking budget: {thinking_budget:,} tokens[/dim]")
+        console.print(f"[dim]Model: claude-haiku-4-5 · thinking budget: {thinking_budget:,} tokens[/dim]")
 
         round_info = {"current": 0, "status": "starting"}
 
@@ -102,7 +102,7 @@ def cli(
             def render_spinner() -> Text:
                 t = Text()
                 t.append("⟳ ", style="cyan")
-                t.append(f"Exploring… (round {round_info['current']}/30)", style="white")
+                t.append(f"Exploring… (round {round_info['current']}/15)", style="white")
                 return t
 
             from agent.loop import run_agent
@@ -172,8 +172,9 @@ def _dry_run(repo_url: str) -> None:
 def _print_cost_estimate(analysis: object) -> None:
     """Print a rough cost estimate based on typical token counts."""
     # Typical for a medium repo: 8k input non-cached, 40k cache reads, 8k thinking, 3k output
-    est = (8_000 * 3 + 40_000 * 0.30 + 8_000 * 3 + 3_000 * 15) / 1_000_000
-    console.print(f"[dim]Estimated cost: ~${est:.3f} (claude-sonnet-4-6)[/dim]")
+    # Haiku 4.5 rates: input $0.80/M, cache read $0.08/M, thinking $0.80/M, output $4.00/M
+    est = (8_000 * 0.80 + 40_000 * 0.08 + 8_000 * 0.80 + 3_000 * 4.00) / 1_000_000
+    console.print(f"[dim]Estimated cost: ~${est:.3f} (claude-haiku-4-5)[/dim]")
 
 
 if __name__ == "__main__":
