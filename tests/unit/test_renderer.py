@@ -1,5 +1,3 @@
-import pathlib
-import pytest
 from output.renderer import render_html
 
 

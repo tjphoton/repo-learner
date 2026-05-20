@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import pathlib
 import time
+from typing import Any
 
 import anthropic
 
@@ -13,7 +14,7 @@ _MODEL = "claude-haiku-4-5-20251001"
 _SYSTEM_TEMPLATE = pathlib.Path(__file__).parent.parent / "prompts" / "system.md"
 
 
-def _build_system() -> list[dict]:
+def _build_system() -> list[Any]:
     schema = output_schema_json()
     text = _SYSTEM_TEMPLATE.read_text().replace("SCHEMA_PLACEHOLDER", schema)
     return [{"type": "text", "text": text, "cache_control": {"type": "ephemeral"}}]
@@ -70,7 +71,7 @@ def analyze(
 
     for attempt in range(3):
         try:
-            response = client.messages.create(
+            response = client.messages.create(  # type: ignore[call-overload]
                 model=_MODEL,
                 max_tokens=thinking_budget + 8000,
                 thinking={"type": "enabled", "budget_tokens": thinking_budget},
@@ -103,7 +104,7 @@ def analyze(
 
     for block in reversed(response.content):
         if getattr(block, "type", "") == "text":
-            text = _strip_fences(block.text)
+            text = _strip_fences(block.text)  # type: ignore[union-attr]
             try:
                 raw = json.loads(text)
             except json.JSONDecodeError as exc:

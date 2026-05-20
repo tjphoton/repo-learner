@@ -3,7 +3,8 @@ from __future__ import annotations
 import base64
 import os
 import re
-from dataclasses import dataclass, field
+from dataclasses import dataclass
+from typing import Any
 
 from github import Github, GithubException
 
@@ -54,7 +55,7 @@ class RepoContext:
     recent_commits: list[str]
 
 
-def _decode(content_file: object) -> str:
+def _decode(content_file: Any) -> str:
     try:
         return base64.b64decode(content_file.content).decode("utf-8", errors="replace")
     except Exception:
@@ -168,7 +169,7 @@ def fetch_repo(repo_url: str) -> RepoContext:
     # Recent commits
     recent_commits: list[str] = []
     try:
-        for c in repo.get_commits()[:15]:
+        for c in repo.get_commits()[:15]:  # type: ignore[var-annotated]
             msg = (c.commit.message or "").split("\n")[0][:120]
             date = c.commit.author.date.strftime("%Y-%m-%d") if c.commit.author else "?"
             recent_commits.append(f"{date}  {msg}")

@@ -1,7 +1,6 @@
 import pytest
 from agent.models import (
-    AnalysisOutput, KeyFile, DataFlowStep,
-    InnovationPoint, DirectoryEntry, RebuildPhase,
+    AnalysisOutput,
 )
 
 

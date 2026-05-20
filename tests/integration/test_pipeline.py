@@ -7,9 +7,7 @@ import base64
 import json
 from unittest.mock import MagicMock, patch
 
-import pytest
 
-from agent.fetcher import FileContent, RepoContext
 
 
 def _encoded(text: str) -> str:

@@ -1,11 +1,9 @@
 """Unit tests for agent/fetcher.py — all GitHub API calls are mocked."""
 import base64
-from unittest.mock import MagicMock, patch, PropertyMock
+from unittest.mock import MagicMock, patch
 
-import pytest
 
 from agent.fetcher import (
-    FileContent,
     RepoContext,
     _decode,
     _truncate,
