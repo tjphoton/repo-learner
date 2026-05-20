@@ -1,0 +1,591 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>repo-learner</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/prismjs@1.29/themes/prism-tomorrow.min.css">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#f8fafc;--surface:#fff;--border:#e2e8f0;--text:#1e293b;
+  --muted:#64748b;--accent:#3b82f6;--accent-dk:#2563eb;
+  --green:#22c55e;--yellow:#f59e0b;--red:#ef4444;
+  --code-bg:#1e293b;--r:8px;--shadow:0 1px 3px rgba(0,0,0,.1)
+}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);line-height:1.6;min-height:100vh}
+header{background:var(--surface);border-bottom:1px solid var(--border);padding:.875rem 2rem;display:flex;align-items:baseline;gap:1rem}
+header h1{font-size:1.2rem;font-weight:700;color:var(--accent)}
+header p{font-size:.85rem;color:var(--muted)}
+main{max-width:900px;margin:0 auto;padding:2rem 1rem}
+
+/* Card */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1.5rem;box-shadow:var(--shadow);margin-bottom:1rem}
+.card h2{font-size:1rem;margin-bottom:1.25rem}
+
+/* Form */
+.field{margin-bottom:1rem}
+.field label{display:block;font-size:.875rem;font-weight:500;margin-bottom:.35rem}
+.field input[type=url],.field input[type=password]{width:100%;padding:.5rem .75rem;border:1px solid var(--border);border-radius:var(--r);font-size:.9rem;background:var(--bg);color:var(--text);transition:border-color .15s}
+.field input:focus{outline:none;border-color:var(--accent)}
+.field-row{display:flex;gap:.75rem;align-items:center}
+.field-row label{font-size:.875rem;white-space:nowrap;flex-shrink:0}
+.field-row input[type=range]{flex:1}
+.field-row span{font-size:.85rem;color:var(--muted);min-width:5.5rem;text-align:right}
+.check-label{display:flex;align-items:center;gap:.5rem;font-size:.85rem;color:var(--muted);cursor:pointer}
+button.primary{width:100%;padding:.625rem 1rem;background:var(--accent);color:#fff;border:none;border-radius:var(--r);font-size:.9rem;font-weight:500;cursor:pointer;margin-top:.5rem;transition:background .15s}
+button.primary:hover{background:var(--accent-dk)}
+button.primary:disabled{opacity:.55;cursor:not-allowed}
+
+/* Progress */
+.spinner-row{display:flex;align-items:center;gap:.75rem;margin-bottom:.75rem}
+.spinner{width:16px;height:16px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.spinner-lbl{font-size:.875rem;color:var(--muted)}
+.log-entry{font-size:.82rem;color:var(--muted);padding:.2rem 0}
+.log-entry::before{content:'› '}
+.log-entry.ok{color:var(--green)}
+
+/* Notices */
+.notice{padding:.75rem 1rem;border-radius:var(--r);font-size:.875rem;margin-bottom:1rem;display:flex;align-items:center;justify-content:space-between;gap:1rem}
+.notice.green{background:#f0fdf4;border:1px solid #bbf7d0;color:#15803d}
+.notice.red{background:#fef2f2;border:1px solid #fecaca;color:#991b1b}
+.notice button{font-size:.8rem;padding:.2rem .65rem;border-radius:var(--r);cursor:pointer;border:1px solid currentColor;background:#fff;color:inherit}
+
+/* Results nav */
+.rnav{display:flex;flex-wrap:wrap;gap:.375rem;margin-bottom:1.25rem}
+.rnav a{font-size:.78rem;padding:.2rem .65rem;border:1px solid var(--border);border-radius:99px;color:var(--muted);text-decoration:none;transition:all .15s}
+.rnav a:hover{border-color:var(--accent);color:var(--accent)}
+
+/* Section headings */
+section{scroll-margin-top:1rem}
+section h2{font-size:1.05rem;font-weight:600;padding-bottom:.5rem;border-bottom:2px solid var(--accent);margin-bottom:1rem}
+
+/* Overview */
+.one-liner{font-size:1.05rem;font-weight:500;margin-bottom:.75rem}
+.purpose{color:var(--muted);font-size:.9rem;line-height:1.75;margin-bottom:.75rem}
+.badges{display:flex;flex-wrap:wrap;gap:.35rem;margin-bottom:.75rem}
+.badge{padding:.15rem .55rem;background:#eff6ff;color:var(--accent);border:1px solid #bfdbfe;border-radius:99px;font-size:.76rem;font-weight:500}
+.complexity{display:inline-block;padding:.15rem .55rem;border-radius:99px;font-size:.76rem;font-weight:600;margin-bottom:.75rem}
+.complexity.small{background:#f0fdf4;color:#15803d;border:1px solid #bbf7d0}
+.complexity.medium{background:#fffbeb;color:#92400e;border:1px solid #fde68a}
+.complexity.large{background:#fff7ed;color:#9a3412;border:1px solid #fed7aa}
+.complexity.very-large{background:#fef2f2;color:#991b1b;border:1px solid #fecaca}
+
+/* Mermaid */
+.diagram{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1rem;overflow-x:auto;margin:.75rem 0;display:flex;justify-content:center}
+
+/* Directory */
+.dir-entry{display:flex;align-items:flex-start;padding:.35rem 0;border-bottom:1px solid var(--border);font-size:.875rem}
+.dir-entry:last-child{border-bottom:none}
+.dir-path{font-family:'Fira Code','Courier New',monospace;color:var(--accent);min-width:210px;margin-right:.75rem;flex-shrink:0}
+.dir-path.d{font-weight:600}
+.dir-ann{color:var(--muted);font-size:.82rem}
+
+/* Key files */
+.kfile{border:1px solid var(--border);border-radius:var(--r);margin-bottom:.625rem;overflow:hidden}
+.kfile summary{padding:.65rem 1rem;cursor:pointer;display:flex;align-items:center;gap:.75rem;list-style:none}
+.kfile summary:hover{background:var(--bg)}
+.kfile-rank{width:1.6rem;height:1.6rem;background:var(--accent);color:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.72rem;font-weight:700;flex-shrink:0}
+.kfile-info{flex:1;min-width:0}
+.kfile-path{font-family:'Fira Code','Courier New',monospace;font-size:.82rem;color:var(--accent)}
+.kfile-why{font-size:.78rem;color:var(--muted)}
+.kfile-body{border-top:1px solid var(--border)}
+.kfile-body pre{margin:0;border-radius:0;font-size:.78rem;max-height:260px;overflow-y:auto}
+
+/* Data flow steps */
+.steps{list-style:none}
+.step{display:flex;gap:1rem;padding:.65rem 0;border-bottom:1px solid var(--border);align-items:flex-start}
+.step:last-child{border-bottom:none}
+.step-n{width:1.6rem;height:1.6rem;border:2px solid var(--accent);color:var(--accent);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.72rem;font-weight:700;flex-shrink:0}
+.step-lbl{font-weight:500;font-size:.875rem}
+.step-arrow{font-size:.78rem;color:var(--muted)}
+.step-file{font-family:'Fira Code','Courier New',monospace;font-size:.75rem;color:var(--accent)}
+
+/* Innovation table */
+.innov{width:100%;border-collapse:collapse;font-size:.85rem}
+.innov th{background:var(--bg);padding:.45rem .75rem;text-align:left;border:1px solid var(--border);font-size:.75rem;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+.innov td{padding:.65rem .75rem;border:1px solid var(--border);vertical-align:top}
+.innov tr:nth-child(even) td{background:var(--bg)}
+.innov-title{font-weight:600;margin-bottom:.2rem}
+.innov-why{font-size:.78rem;color:var(--muted);margin-top:.2rem}
+
+/* Rebuild phases */
+.phase{border:1px solid var(--border);border-radius:var(--r);margin-bottom:.875rem;overflow:hidden}
+.phase-head{display:flex;align-items:center;gap:.875rem;padding:.875rem 1rem;background:var(--bg);border-bottom:1px solid var(--border)}
+.phase-num{width:2rem;height:2rem;background:var(--accent);color:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;flex-shrink:0}
+.phase-title{font-weight:600;font-size:.9rem}
+.phase-desc{font-size:.8rem;color:var(--muted)}
+.phase-body{padding:1rem}
+.prompt-lbl{font-size:.72rem;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin-bottom:.4rem}
+.prompt-box{background:var(--code-bg);color:#e2e8f0;padding:.75rem 1rem;border-radius:var(--r);font-size:.83rem;line-height:1.65;position:relative;white-space:pre-wrap;word-break:break-word;padding-right:4.5rem}
+.copy-btn{position:absolute;top:.5rem;right:.5rem;padding:.2rem .55rem;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);color:#e2e8f0;border-radius:4px;font-size:.72rem;cursor:pointer}
+.copy-btn:hover{background:rgba(255,255,255,.2)}
+.gotchas{margin-top:.65rem}
+.gotcha{font-size:.8rem;color:var(--yellow);padding:.2rem 0}
+.gotcha::before{content:'⚠ '}
+
+@media(max-width:600px){.dir-path{min-width:130px}.innov{font-size:.78rem}}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>repo-learner</h1>
+  <p>Analyse any GitHub repo in your browser — no install, no server</p>
+</header>
+
+<main>
+  <div class="card">
+    <h2>Analyse a Repository</h2>
+    <form id="form">
+      <div class="field">
+        <label for="repo-url">GitHub Repository URL</label>
+        <input type="url" id="repo-url" placeholder="https://github.com/owner/repo" required autocomplete="off">
+      </div>
+      <div class="field">
+        <label for="api-key">Anthropic API Key</label>
+        <input type="password" id="api-key" placeholder="sk-ant-..." required autocomplete="off">
+      </div>
+      <div class="field">
+        <label for="gh-token">GitHub Token <span style="font-weight:400;color:var(--muted)">(optional — avoids 60 req/hr limit)</span></label>
+        <input type="password" id="gh-token" placeholder="ghp_..." autocomplete="off">
+      </div>
+      <div class="field">
+        <div class="field-row">
+          <label for="budget">Thinking budget</label>
+          <input type="range" id="budget" min="1024" max="16000" step="1000" value="8000">
+          <span id="budget-lbl">8,000 tokens</span>
+        </div>
+      </div>
+      <div class="field">
+        <label class="check-label">
+          <input type="checkbox" id="save-keys">
+          Remember keys in this browser (localStorage only — never sent anywhere else)
+        </label>
+      </div>
+      <button type="submit" class="primary" id="submit-btn">Analyse Repository</button>
+    </form>
+  </div>
+
+  <div id="progress-wrap" hidden>
+    <div class="card">
+      <div class="spinner-row">
+        <div class="spinner" id="spinner"></div>
+        <span class="spinner-lbl" id="spinner-lbl">Starting…</span>
+      </div>
+      <div id="log"></div>
+    </div>
+  </div>
+
+  <div id="notices"></div>
+  <div id="output" hidden></div>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/prismjs@1.29/prism.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/prismjs@1.29/plugins/autoloader/prism-autoloader.min.js"></script>
+<script>
+'use strict';
+
+// ── Constants ──────────────────────────────────────────────────────────────────
+const MODEL = 'claude-haiku-4-5-20251001';
+const MAX_LINES = 300, MAX_FILES = 15, MAX_TREE = 600;
+
+const ENTRY_POINTS = new Set([
+  'main.py','app.py','server.py','run.py','manage.py','__main__.py',
+  'main.ts','app.ts','server.ts','index.ts','main.js','app.js','server.js','index.js',
+  'main.go','main.rs','main.rb','Dockerfile','docker-compose.yml','docker-compose.yaml',
+]);
+const CONFIGS = new Set([
+  'pyproject.toml','setup.py','setup.cfg','package.json','tsconfig.json',
+  'Cargo.toml','go.mod','requirements.txt','pom.xml','build.gradle',
+  'build.gradle.kts','composer.json','mix.exs','Gemfile',
+]);
+const READMES = new Set(['README.md','README.rst','README.txt','README','readme.md']);
+
+// ── Schema (mirrors models.py) ─────────────────────────────────────────────────
+const SCHEMA = {
+  type:'object',
+  required:['repo_url','project_name','one_liner','purpose','tech_stack',
+            'architecture_mermaid','directory_structure','key_files',
+            'data_flow_mermaid','data_flow_steps','innovation_points',
+            'rebuild_phases','estimated_complexity'],
+  properties:{
+    repo_url:{type:'string'}, project_name:{type:'string'},
+    one_liner:{type:'string'}, purpose:{type:'string'},
+    tech_stack:{type:'array',items:{type:'string'}},
+    architecture_mermaid:{type:'string',description:'graph TB or graph LR Mermaid source'},
+    directory_structure:{type:'array',items:{type:'object',required:['path','annotation','type'],
+      properties:{path:{type:'string'},annotation:{type:'string'},type:{type:'string',enum:['file','dir']}}}},
+    key_files:{type:'array',minItems:10,maxItems:10,
+      description:'Exactly 10 entries ranked 1–10 with unique ranks',
+      items:{type:'object',required:['path','rank','reason','excerpt','mermaid_node'],
+        properties:{path:{type:'string'},rank:{type:'integer',minimum:1,maximum:10},
+          reason:{type:'string'},excerpt:{type:'string',description:'5–20 representative lines'},
+          mermaid_node:{type:'string'}}}},
+    data_flow_mermaid:{type:'string',description:'sequenceDiagram Mermaid source'},
+    data_flow_steps:{type:'array',items:{type:'object',required:['source','target','label','file_ref'],
+      properties:{source:{type:'string'},target:{type:'string'},label:{type:'string'},file_ref:{type:'string'}}}},
+    innovation_points:{type:'array',items:{type:'object',
+      required:['title','conventional','this_project','why_matters'],
+      properties:{title:{type:'string'},conventional:{type:'string'},
+        this_project:{type:'string'},why_matters:{type:'string'}}}},
+    rebuild_phases:{type:'array',minItems:4,maxItems:6,items:{type:'object',
+      required:['phase','title','description','prompt','gotchas'],
+      properties:{phase:{type:'integer'},title:{type:'string'},description:{type:'string'},
+        prompt:{type:'string',description:'Claude Code prompt ≥50 chars'},
+        gotchas:{type:'array',items:{type:'string'}}}}},
+    estimated_complexity:{type:'string',enum:['small','medium','large','very-large']},
+  }
+};
+
+const SYSTEM = `You are a senior software architect analysing a GitHub repository. The repository content has already been fetched for you: you will receive the file tree, recent commits, and the content of key files. Produce a comprehensive learning document for a developer who has never seen this codebase. Use extended thinking to reason across the provided files.
+
+Rules:
+- Base every claim on provided file content. Do not invent paths or function names.
+- When README and code disagree, trust the code.
+- Identify exactly 10 key files, ranked 1–10 with unique ranks.
+- Rebuild guide must have 4–6 phases, each with a Claude Code prompt ≥50 characters.
+- estimated_complexity must be one of: "small", "medium", "large", "very-large".
+
+Output ONLY a single JSON object matching the schema. No markdown fences, no preamble, no trailing text. Escape all quotes and newlines inside strings. architecture_mermaid must start with "graph TB" or "graph LR". data_flow_mermaid must start with "sequenceDiagram".
+
+Schema:
+\`\`\`json
+${JSON.stringify(SCHEMA,null,2)}
+\`\`\``;
+
+// ── Utilities ──────────────────────────────────────────────────────────────────
+const base = p => p.split('/').pop();
+const fileExt = p => { const b = base(p); return b.includes('.') ? b.split('.').pop() : 'text'; };
+const esc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+
+function truncate(text, max=MAX_LINES) {
+  const lines = text.split('\n');
+  if (lines.length <= max) return [text, false];
+  return [lines.slice(0,max).join('\n')+`\n... [${lines.length-max} more lines omitted]`, true];
+}
+
+function selectPaths(all) {
+  const out=[], seen=new Set();
+  const add = p => { if (!seen.has(p) && out.length < MAX_FILES) { seen.add(p); out.push(p); } };
+  for (const p of all) if (READMES.has(base(p))) add(p);
+  for (const p of all) if (!p.includes('/') && ENTRY_POINTS.has(base(p))) add(p);
+  for (const p of all) if (!p.includes('/') && CONFIGS.has(base(p))) add(p);
+  let wf=false;
+  for (const p of all) if (!wf && p.startsWith('.github/workflows/') && /\.(yml|yaml)$/.test(p)) { add(p); wf=true; }
+  for (const p of all) if (!p.includes('/') && /\.(py|ts|js|go|rs|rb)$/.test(p)) add(p);
+  for (const p of all) { const pts=p.split('/'); if (pts.length===2 && ['src','lib','core','app','pkg','agent','output'].includes(pts[0])) add(p); }
+  return out;
+}
+
+// ── GitHub API ─────────────────────────────────────────────────────────────────
+async function gh(path, token) {
+  const h = {'Accept':'application/vnd.github+json'};
+  if (token) h['Authorization'] = `Bearer ${token}`;
+  const r = await fetch(`https://api.github.com${path}`, {headers:h});
+  if (!r.ok) { const e = await r.json().catch(()=>({})); throw new Error(`GitHub ${r.status}: ${e.message||r.statusText}`); }
+  return r.json();
+}
+
+async function fetchRepo(url, token, log) {
+  const slug = url.replace(/^https:\/\/github\.com\//,'').replace(/\/$/,'');
+
+  log('Fetching repository metadata…');
+  const meta = await gh(`/repos/${slug}`, token);
+
+  log('Fetching file tree…');
+  let allPaths = [];
+  try {
+    const tree = await gh(`/repos/${slug}/git/trees/${meta.default_branch}?recursive=1`, token);
+    allPaths = (tree.tree||[]).filter(i=>i.type==='blob').map(i=>i.path);
+  } catch(e) { log(`⚠ Tree unavailable: ${e.message}`); }
+
+  log('Fetching recent commits…');
+  let commits = [];
+  try {
+    const cs = await gh(`/repos/${slug}/commits?per_page=15`, token);
+    commits = cs.map(c => `${c.commit.author?.date?.slice(0,10)||'?'}  ${(c.commit.message||'').split('\n')[0].slice(0,120)}`);
+  } catch {}
+
+  const fileTree = allPaths.slice(0, MAX_TREE);
+  const toRead = selectPaths(allPaths);
+
+  log(`Fetching ${toRead.length} key files…`);
+  const keyFiles = [];
+  for (const path of toRead) {
+    try {
+      const cf = await gh(`/repos/${slug}/contents/${path}`, token);
+      const raw = atob((cf.content||'').replace(/\n/g,''));
+      const [content, truncated] = truncate(raw);
+      keyFiles.push({path, content, truncated});
+    } catch {}
+  }
+
+  let readme = (keyFiles.find(f=>READMES.has(base(f.path)))||{}).content || '';
+  if (!readme) {
+    try { const rf = await gh(`/repos/${slug}/readme`, token); [readme] = truncate(atob((rf.content||'').replace(/\n/g,'')), 500); } catch {}
+  }
+
+  return {url, slug, owner:meta.owner.login, name:meta.name, description:meta.description||'',
+    language:meta.language||'unknown', stars:meta.stargazers_count, topics:meta.topics||[],
+    defaultBranch:meta.default_branch, fileTree, readme, keyFiles, commits};
+}
+
+// ── Prompt ─────────────────────────────────────────────────────────────────────
+function buildPrompt(ctx) {
+  const p = [];
+  p.push(`# Repository: ${ctx.owner}/${ctx.name}\nURL: ${ctx.url}\nDescription: ${ctx.description}`);
+  p.push(`Language: ${ctx.language} | Stars: ${ctx.stars.toLocaleString()} | Branch: ${ctx.defaultBranch}`);
+  if (ctx.topics.length) p.push(`Topics: ${ctx.topics.join(', ')}`);
+  p.push('\n## File Tree\n' + ctx.fileTree.join('\n'));
+  if (ctx.fileTree.length >= MAX_TREE) p.push('... [tree truncated at 600 entries]');
+  if (ctx.commits.length) p.push('\n## Recent Commits\n' + ctx.commits.join('\n'));
+  for (const f of ctx.keyFiles) {
+    p.push(`\n## ${f.path}${f.truncated?' (truncated)':''}\n\`\`\`${fileExt(f.path)}\n${f.content}\n\`\`\``);
+  }
+  p.push('\n---\nAnalyse the repository content above and produce the JSON output now.');
+  return p.join('\n');
+}
+
+// ── Anthropic API ──────────────────────────────────────────────────────────────
+async function callAnthropic(apiKey, userMsg, budget) {
+  const r = await fetch('https://api.anthropic.com/v1/messages', {
+    method:'POST',
+    headers:{
+      'x-api-key':apiKey,
+      'anthropic-version':'2023-06-01',
+      'content-type':'application/json',
+      'anthropic-dangerous-direct-browser-access':'true',
+    },
+    body: JSON.stringify({
+      model: MODEL,
+      max_tokens: budget + 8000,
+      thinking: {type:'enabled', budget_tokens:budget},
+      system: [{type:'text', text:SYSTEM, cache_control:{type:'ephemeral'}}],
+      messages: [{role:'user', content:userMsg}],
+    }),
+  });
+  if (!r.ok) { const e = await r.json().catch(()=>({})); throw new Error(`Anthropic ${r.status}: ${e.error?.message||r.statusText}`); }
+  const data = await r.json();
+  for (const b of [...data.content].reverse()) {
+    if (b.type === 'text') {
+      let t = b.text.trim();
+      if (t.startsWith('```')) { const ls=t.split('\n'); if (ls.at(-1).trim()==='```') ls.pop(); ls.shift(); t=ls.join('\n').trim(); }
+      return JSON.parse(t);
+    }
+  }
+  throw new Error('No text block in response');
+}
+
+// ── Renderer ───────────────────────────────────────────────────────────────────
+function render(a) {
+  const kf = (a.key_files||[]).slice().sort((x,y)=>x.rank-y.rank);
+  const html = `
+  <div class="rnav">
+    <a href="#s1">Overview</a><a href="#s2">Directory</a><a href="#s3">Key Files</a>
+    <a href="#s4">Data Flow</a><a href="#s5">Innovation</a><a href="#s6">Rebuild Guide</a>
+  </div>
+
+  <div class="card"><section id="s1">
+    <h2>1 · Project Overview</h2>
+    <p class="one-liner">${esc(a.one_liner)}</p>
+    <span class="complexity ${esc(a.estimated_complexity)}">${esc(a.estimated_complexity)}</span>
+    <p class="purpose">${esc(a.purpose).replace(/\n\n/g,'</p><p class="purpose">').replace(/\n/g,' ')}</p>
+    <div class="badges">${(a.tech_stack||[]).map(t=>`<span class="badge">${esc(t)}</span>`).join('')}</div>
+    <div class="diagram" id="arch"></div>
+  </section></div>
+
+  <div class="card"><section id="s2">
+    <h2>2 · Directory Structure</h2>
+    ${(a.directory_structure||[]).map(d=>`
+      <div class="dir-entry">
+        <span class="dir-path${d.type==='dir'?' d':''}">${esc(d.path)}${d.type==='dir'?'/':''}</span>
+        <span class="dir-ann">${esc(d.annotation)}</span>
+      </div>`).join('')}
+  </section></div>
+
+  <div class="card"><section id="s3">
+    <h2>3 · Key Files</h2>
+    ${kf.map(f=>`
+      <details class="kfile">
+        <summary>
+          <span class="kfile-rank">${f.rank}</span>
+          <div class="kfile-info">
+            <div class="kfile-path">${esc(f.path)}</div>
+            <div class="kfile-why">${esc(f.reason)}</div>
+          </div>
+        </summary>
+        <div class="kfile-body">
+          <pre><code class="language-${esc(fileExt(f.path))}">${esc(f.excerpt)}</code></pre>
+        </div>
+      </details>`).join('')}
+  </section></div>
+
+  <div class="card"><section id="s4">
+    <h2>4 · Data Flow</h2>
+    <div class="diagram" id="flow"></div>
+    <ul class="steps">
+      ${(a.data_flow_steps||[]).map((s,i)=>`
+        <li class="step">
+          <span class="step-n">${i+1}</span>
+          <div>
+            <div class="step-lbl">${esc(s.label)}</div>
+            <div class="step-arrow">${esc(s.source)} → ${esc(s.target)}</div>
+            <div class="step-file">${esc(s.file_ref)}</div>
+          </div>
+        </li>`).join('')}
+    </ul>
+  </section></div>
+
+  <div class="card"><section id="s5">
+    <h2>5 · Innovation</h2>
+    <table class="innov">
+      <thead><tr><th>Feature</th><th>Conventional</th><th>This project</th></tr></thead>
+      <tbody>
+        ${(a.innovation_points||[]).map(ip=>`
+          <tr>
+            <td><div class="innov-title">${esc(ip.title)}</div><div class="innov-why">${esc(ip.why_matters)}</div></td>
+            <td>${esc(ip.conventional)}</td>
+            <td>${esc(ip.this_project)}</td>
+          </tr>`).join('')}
+      </tbody>
+    </table>
+  </section></div>
+
+  <div class="card"><section id="s6">
+    <h2>6 · Rebuild Guide</h2>
+    ${(a.rebuild_phases||[]).map(ph=>`
+      <div class="phase">
+        <div class="phase-head">
+          <span class="phase-num">${ph.phase}</span>
+          <div><div class="phase-title">${esc(ph.title)}</div><div class="phase-desc">${esc(ph.description)}</div></div>
+        </div>
+        <div class="phase-body">
+          <div class="prompt-lbl">Claude Code Prompt</div>
+          <div class="prompt-box" data-prompt="${esc(ph.prompt)}">${esc(ph.prompt)}<button class="copy-btn" onclick="copyPrompt(this)">Copy</button></div>
+          ${(ph.gotchas||[]).length ? `<div class="gotchas">${ph.gotchas.map(g=>`<div class="gotcha">${esc(g)}</div>`).join('')}</div>` : ''}
+        </div>
+      </div>`).join('')}
+  </section></div>`;
+
+  const out = document.getElementById('output');
+  out.innerHTML = html;
+  out.hidden = false;
+
+  // Set Mermaid text content safely (avoids innerHTML XSS)
+  document.getElementById('arch').textContent = a.architecture_mermaid || '';
+  document.getElementById('flow').textContent = a.data_flow_mermaid || '';
+  document.querySelectorAll('#arch,#flow').forEach(el => el.className = 'diagram mermaid');
+
+  mermaid.run({nodes: out.querySelectorAll('.mermaid')}).catch(()=>{});
+  if (window.Prism) Prism.highlightAllUnder(out);
+}
+
+function copyPrompt(btn) {
+  const text = btn.parentElement.dataset.prompt;
+  navigator.clipboard.writeText(text).then(() => {
+    btn.textContent = 'Copied!';
+    setTimeout(() => { btn.textContent = 'Copy'; }, 2000);
+  });
+}
+
+// ── Cache ──────────────────────────────────────────────────────────────────────
+const cKey = url => 'repo-learner:' + url.trim().replace(/\/$/,'');
+const loadCache = url => { try { return JSON.parse(localStorage.getItem(cKey(url))||'null'); } catch { return null; } };
+const saveCache = (url, d) => { try { localStorage.setItem(cKey(url), JSON.stringify(d)); } catch {} };
+
+// ── UI helpers ─────────────────────────────────────────────────────────────────
+const notices = () => document.getElementById('notices');
+function notice(msg, type='green', btn=null) {
+  notices().innerHTML = `<div class="notice ${type}">${esc(msg)}${btn||''}</div>`;
+}
+function log(msg, ok=false) {
+  const d = document.createElement('div');
+  d.className = 'log-entry' + (ok?' ok':'');
+  d.textContent = msg;
+  document.getElementById('log').appendChild(d);
+}
+
+// ── Init ───────────────────────────────────────────────────────────────────────
+mermaid.initialize({startOnLoad:false, theme:'default', securityLevel:'loose'});
+
+if (window.Prism) Prism.plugins.autoloader.languages_path = 'https://cdn.jsdelivr.net/npm/prismjs@1.29/components/';
+
+// Restore saved credentials
+const savedKey = localStorage.getItem('repo-learner:api-key');
+const savedToken = localStorage.getItem('repo-learner:gh-token');
+if (savedKey) { document.getElementById('api-key').value = savedKey; document.getElementById('save-keys').checked = true; }
+if (savedToken) document.getElementById('gh-token').value = savedToken;
+
+document.getElementById('budget').addEventListener('input', function() {
+  document.getElementById('budget-lbl').textContent = Number(this.value).toLocaleString() + ' tokens';
+});
+
+// ── Form submit ────────────────────────────────────────────────────────────────
+document.getElementById('form').addEventListener('submit', async function(e) {
+  e.preventDefault();
+  notices().innerHTML = '';
+  const out = document.getElementById('output');
+  out.hidden = true; out.innerHTML = '';
+  document.getElementById('log').innerHTML = '';
+
+  const url = document.getElementById('repo-url').value.trim();
+  const apiKey = document.getElementById('api-key').value.trim();
+  const ghToken = document.getElementById('gh-token').value.trim();
+  const budget = Number(document.getElementById('budget').value);
+  const saveKeys = document.getElementById('save-keys').checked;
+
+  if (saveKeys) {
+    localStorage.setItem('repo-learner:api-key', apiKey);
+    localStorage.setItem('repo-learner:gh-token', ghToken);
+  } else {
+    localStorage.removeItem('repo-learner:api-key');
+    localStorage.removeItem('repo-learner:gh-token');
+  }
+
+  // Cache hit
+  const cached = loadCache(url);
+  if (cached) {
+    notice(`Loaded from cache — <a href="#" onclick="rerun(event,'${esc(url)}')">re-analyse</a> to refresh`, 'green');
+    render(cached);
+    return;
+  }
+
+  const btn = document.getElementById('submit-btn');
+  btn.disabled = true;
+  document.getElementById('progress-wrap').hidden = false;
+  document.getElementById('spinner-lbl').textContent = 'Fetching repository…';
+
+  try {
+    const ctx = await fetchRepo(url, ghToken, msg => log(msg));
+    log(`✓ ${ctx.keyFiles.length} files · ${ctx.fileTree.length} tree entries · ${ctx.commits.length} commits`, true);
+
+    document.getElementById('spinner-lbl').textContent = 'Analysing with claude-haiku-4-5… (30–60 s)';
+    log('Calling Anthropic API…');
+
+    const analysis = await callAnthropic(apiKey, buildPrompt(ctx), budget);
+    log('✓ Analysis complete', true);
+    document.getElementById('spinner-lbl').textContent = 'Done';
+
+    saveCache(url, analysis);
+    render(analysis);
+  } catch(err) {
+    document.getElementById('spinner-lbl').textContent = 'Failed';
+    notice(err.message, 'red');
+    console.error(err);
+  } finally {
+    btn.disabled = false;
+  }
+});
+
+function rerun(e, url) {
+  e.preventDefault();
+  localStorage.removeItem(cKey(url));
+  notices().innerHTML = '';
+  document.getElementById('form').dispatchEvent(new Event('submit'));
+}
+</script>
+</body>
+</html>
