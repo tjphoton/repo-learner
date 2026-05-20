@@ -6,7 +6,22 @@ Powered by **claude-haiku-4-5** with extended thinking. The tool pre-fetches the
 
 ---
 
-## Quick start
+## Web interface (no install required)
+
+Open `webapp.html` directly in any browser — no server, no install, no Python.
+
+1. Download [`webapp.html`](webapp.html) from this repo (or clone it locally).
+2. Open it with `open webapp.html` (macOS) or double-click it in your file manager.
+3. Enter your **Anthropic API key** and optionally a **GitHub token**.
+4. Paste any public GitHub repo URL and click **Analyse**.
+
+The webapp calls GitHub and the Anthropic API directly from your browser using the same two-phase pipeline as the CLI. Results are cached in `localStorage` so re-opening the same repo is instant.
+
+> **Keys stay in your browser.** They are sent directly to `api.anthropic.com` and `api.github.com` — no proxy, no server ever sees them. Optionally save them to `localStorage` so you don't have to re-enter them.
+
+---
+
+## Quick start (CLI)
 
 ```bash
 # 1. Set required env vars
