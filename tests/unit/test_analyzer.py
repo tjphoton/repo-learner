@@ -89,6 +89,39 @@ class TestAnalyzerModel:
         assert MockA.return_value.messages.create.call_count == 1
 
 
+class TestStripFences:
+    def test_strips_json_fence(self):
+        from agent.analyzer import _strip_fences
+        text = "```json\n{}\n```"
+        assert _strip_fences(text) == "{}"
+
+    def test_strips_plain_fence(self):
+        from agent.analyzer import _strip_fences
+        text = "```\n{}\n```"
+        assert _strip_fences(text) == "{}"
+
+    def test_passthrough_bare_json(self):
+        from agent.analyzer import _strip_fences
+        text = '{"key": "value"}'
+        assert _strip_fences(text) == text
+
+    def test_model_fenced_output_parses(self, minimal_raw):
+        import json
+        ctx = _make_ctx()
+        fenced_block = MagicMock()
+        fenced_block.type = "text"
+        fenced_block.text = f"```json\n{json.dumps(minimal_raw)}\n```"
+        resp = MagicMock()
+        resp.stop_reason = "end_turn"
+        resp.content = [fenced_block]
+        with patch("agent.analyzer.anthropic.Anthropic") as MockA:
+            MockA.return_value.messages.create.return_value = resp
+            from agent.analyzer import analyze
+            from agent.models import AnalysisOutput
+            result = analyze(ctx)
+        assert isinstance(result, AnalysisOutput)
+
+
 class TestAnalyzerOutput:
     def test_returns_analysis_output(self, minimal_raw):
         from agent.models import AnalysisOutput

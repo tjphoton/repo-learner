@@ -72,7 +72,7 @@ def analyze(
         try:
             response = client.messages.create(
                 model=_MODEL,
-                max_tokens=thinking_budget + 5000,
+                max_tokens=thinking_budget + 8000,
                 thinking={"type": "enabled", "budget_tokens": thinking_budget},
                 system=system,
                 messages=[{"role": "user", "content": user_content}],
@@ -103,7 +103,29 @@ def analyze(
 
     for block in reversed(response.content):
         if getattr(block, "type", "") == "text":
-            raw = json.loads(block.text)
+            text = _strip_fences(block.text)
+            try:
+                raw = json.loads(text)
+            except json.JSONDecodeError as exc:
+                import sys
+                preview = text[:500].replace("\n", "\\n")
+                print(f"[analyzer] JSON parse error: {exc}", file=sys.stderr)
+                print(f"[analyzer] Response preview: {preview}", file=sys.stderr)
+                raise ValueError(f"Model output is not valid JSON: {exc}") from exc
             return validate_output(raw)
 
     raise ValueError("Model returned no text block")
+
+
+def _strip_fences(text: str) -> str:
+    """Remove markdown code fences the model may have added despite instructions."""
+    text = text.strip()
+    if text.startswith("```"):
+        # drop first line (```json or ```) and last ``` line
+        lines = text.splitlines()
+        if lines[-1].strip() == "```":
+            lines = lines[1:-1]
+        else:
+            lines = lines[1:]
+        text = "\n".join(lines).strip()
+    return text
