@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import pathlib
+import time
 from typing import Any
 
 import anthropic
@@ -51,20 +52,34 @@ def run_agent(
         if progress_callback:
             progress_callback(round_num, "thinking")
 
-        response = client.messages.create(
-            model=_MODEL,
-            max_tokens=16000,
-            thinking={"type": "enabled", "budget_tokens": thinking_budget},
-            system=[
-                {
-                    "type": "text",
-                    "text": system_prompt,
-                    "cache_control": {"type": "ephemeral"},
-                }
-            ],
-            tools=TOOLS,
-            messages=messages,
-        )
+        # Retry up to 3 times on rate-limit (429) with back-off
+        for attempt in range(3):
+            try:
+                response = client.messages.create(
+                    model=_MODEL,
+                    max_tokens=16000,
+                    thinking={"type": "enabled", "budget_tokens": thinking_budget},
+                    system=[
+                        {
+                            "type": "text",
+                            "text": system_prompt,
+                            "cache_control": {"type": "ephemeral"},
+                        }
+                    ],
+                    tools=TOOLS,
+                    messages=messages,
+                )
+                break
+            except anthropic.RateLimitError:
+                if attempt == 2:
+                    raise
+                wait = 60 * (attempt + 1)
+                import sys
+                print(
+                    f"[rate limit] sleeping {wait}s before retry {attempt + 2}/3…",
+                    file=sys.stderr,
+                )
+                time.sleep(wait)
 
         if verbose:
             import sys
