@@ -72,7 +72,7 @@ def analyze(
         try:
             response = client.messages.create(
                 model=_MODEL,
-                max_tokens=8000,
+                max_tokens=thinking_budget + 5000,
                 thinking={"type": "enabled", "budget_tokens": thinking_budget},
                 system=system,
                 messages=[{"role": "user", "content": user_content}],
