@@ -9,9 +9,11 @@ build/
 # uv
 .uv/
 
-# Environment
+# Environment — never commit real keys
 .env
-.env.*
+.env.local
+.env.*.local
+# .env.example is intentionally tracked
 
 # Test / coverage
 .pytest_cache/

@@ -8,9 +8,14 @@ import sys
 import time
 
 import click
+from dotenv import load_dotenv
 from rich.console import Console
 from rich.live import Live
 from rich.text import Text
+
+# Load .env from the current working directory (or any parent) before anything else.
+# Existing shell env vars take precedence; override=False preserves them.
+load_dotenv(override=False)
 
 console = Console(stderr=True)
 
